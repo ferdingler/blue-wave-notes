@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sandboxing Primitives Course</title>
+<style>
+  :root {
+    --bg: #f5f7fb;
+    --paper: #ffffff;
+    --ink: #172033;
+    --muted: #5f6b7c;
+    --line: #d9e1ec;
+    --soft: #eef3f9;
+    --accent: #2156a5;
+    --accent-2: #0f766e;
+    --warn: #9a5b13;
+    --danger: #a3312b;
+    --ok-bg: #e8f5ee;
+    --warn-bg: #fff3df;
+    --danger-bg: #fae8e6;
+    --code: #101827;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Inter, "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    line-height: 1.58;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .layout {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    min-height: 100vh;
+  }
+  aside {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow: auto;
+    padding: 24px 18px;
+    background: #111827;
+    color: #e5edf7;
+    border-right: 1px solid #0b1220;
+  }
+  aside h2 {
+    margin: 0 0 4px;
+    font-size: 16px;
+    letter-spacing: .02em;
+  }
+  aside .subtitle {
+    margin: 0 0 18px;
+    color: #a9b6c8;
+    font-size: 12px;
+  }
+  nav a {
+    display: block;
+    padding: 7px 9px;
+    margin: 2px 0;
+    border-radius: 7px;
+    color: #d9e5f5;
+    font-size: 13px;
+  }
+  nav a:hover {
+    background: #1d2a3d;
+    text-decoration: none;
+  }
+  main {
+    max-width: 1160px;
+    padding: 36px 40px 72px;
+  }
+  .hero {
+    background: linear-gradient(135deg, #ffffff 0%, #edf4ff 100%);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 30px 34px;
+    box-shadow: 0 14px 38px rgba(19, 35, 64, .08);
+  }
+  .eyebrow {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  h1 {
+    margin: 8px 0 12px;
+    font-size: clamp(30px, 4vw, 48px);
+    line-height: 1.04;
+    letter-spacing: 0;
+  }
+  h2 {
+    margin: 44px 0 14px;
+    font-size: 26px;
+    letter-spacing: 0;
+  }
+  h3 {
+    margin: 24px 0 8px;
+    font-size: 18px;
+  }
+  h4 {
+    margin: 16px 0 8px;
+    font-size: 14px;
+    color: var(--muted);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 8px 0 12px 22px; padding: 0; }
+  li { margin: 4px 0; }
+  code {
+    font-family: "SF Mono", Consolas, Menlo, monospace;
+    font-size: .92em;
+    background: #edf1f7;
+    border: 1px solid #dce4ee;
+    border-radius: 5px;
+    padding: 1px 5px;
+  }
+  pre {
+    margin: 10px 0 14px;
+    padding: 14px 16px;
+    overflow: auto;
+    color: #f4f7fb;
+    background: var(--code);
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  pre code {
+    color: inherit;
+    background: transparent;
+    border: 0;
+    padding: 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 18px;
+    background: var(--paper);
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: 9px 10px;
+    vertical-align: top;
+    text-align: left;
+  }
+  th {
+    background: var(--soft);
+    color: #334155;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .card, .module, .callout, .lab {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .card { padding: 18px; }
+  .card b { color: var(--ink); }
+  .module {
+    margin: 26px 0;
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(19, 35, 64, .04);
+  }
+  .module-header {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 14px;
+    align-items: start;
+    margin-bottom: 12px;
+  }
+  .num {
+    min-width: 54px;
+    height: 54px;
+    border-radius: 12px;
+    background: #dceafe;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 18px;
+  }
+  .module h2 {
+    margin: 0 0 4px;
+    font-size: 25px;
+  }
+  .module .summary {
+    color: var(--muted);
+    margin: 0;
+  }
+  .two {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+  }
+  .box {
+    background: #fbfdff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .box h4 { margin-top: 0; }
+  .callout {
+    border-left: 5px solid var(--accent);
+    padding: 15px 18px;
+    margin: 14px 0;
+    background: #edf4ff;
+  }
+  .callout.warn {
+    border-left-color: var(--warn);
+    background: var(--warn-bg);
+  }
+  .callout.danger {
+    border-left-color: var(--danger);
+    background: var(--danger-bg);
+  }
+  .lab {
+    margin-top: 14px;
+    padding: 16px;
+    background: #f8fbff;
+  }
+  .tagrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--soft);
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .diagram {
+    margin: 16px 0;
+    padding: 16px;
+    background: #f9fbfe;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow-x: auto;
+  }
+  .flow {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    min-width: 620px;
+  }
+  .flow .step {
+    flex: 1;
+    padding: 12px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 13px;
+  }
+  .arrow {
+    display: flex;
+    align-items: center;
+    color: var(--muted);
+    font-weight: 800;
+  }
+  .resources a {
+    display: inline-block;
+    margin: 4px 6px 4px 0;
+    padding: 4px 8px;
+    border-radius: 7px;
+    background: #eef3f9;
+    font-size: 12px;
+  }
+  .footer {
+    margin-top: 48px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 13px;
+  }
+  @media (max-width: 960px) {
+    .layout { display: block; }
+    aside { position: static; height: auto; }
+    main { padding: 24px 16px 48px; }
+    .two { grid-template-columns: 1fr; }
+    .hero { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+<aside>
+  <h2>Sandboxing Primitives</h2>
+  <p class="subtitle">A first-principles OS course for engineers building sandboxed systems.</p>
+  <nav>
+    <a href="#m0">0. OS Boundaries</a>
+    <a href="#m1">1. Processes</a>
+    <a href="#m2">2. Users and Permissions</a>
+    <a href="#m3">3. Syscalls</a>
+    <a href="#m4">4. Filesystem Isolation</a>
+    <a href="#m5">5. Process Isolation</a>
+    <a href="#m6">6. Network Isolation</a>
+    <a href="#m7">7. Seccomp</a>
+    <a href="#m8">8. Cgroups</a>
+    <a href="#m9">9. Containers, VMs, microVMs</a>
+    <a href="#m10">10. Shells</a>
+    <a href="#m11">11. Interpreters</a>
+    <a href="#m12">12. File Descriptors and IPC</a>
+    <a href="#m13">13. Credentials</a>
+    <a href="#m14">14. Gateways and Proxies</a>
+    <a href="#m15">15. Observability</a>
+    <a href="#m16">16. Failure Modes</a>
+    <a href="#m17">17. Putting It Together</a>
+    <a href="#glossary">Glossary</a>
+  </nav>
+</aside>
+
+<main>
+  <section class="hero">
+    <div class="eyebrow">Course</div>
+    <h1>Sandboxing Primitives</h1>
+    <p><b>Network isolation, filesystem isolation, syscalls, process isolation, seccomp, shells, cgroups, credentials, gateways, and cross-platform OS controls.</b></p>
+    <p>This course is written for an experienced backend or distributed-systems engineer who wants a rigorous mental model of sandbox building blocks without assuming prior kernel-development experience.</p>
+    <div class="tagrow">
+      <span class="tag">Linux first principles</span>
+      <span class="tag">macOS and Windows comparisons</span>
+      <span class="tag">Hands-on labs</span>
+      <span class="tag">Sandbox failure modes</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>How To Use This Course</h2>
+    <div class="grid">
+      <div class="card"><b>Read in order.</b><br>Later modules assume the mental model from earlier ones: process inheritance, file descriptors, syscalls, namespaces, and credentials.</div>
+      <div class="card"><b>Do the labs selectively.</b><br>Some labs require Linux, root, Docker, or bubblewrap. They are optional, but the simple inspection labs are worth doing.</div>
+      <div class="card"><b>Look for limits.</b><br>Every module says what the primitive cannot enforce. Those limits are usually where real sandbox designs fail.</div>
+      <div class="card"><b>Keep platform differences explicit.</b><br>Linux, macOS, and Windows have different primitive sets. Shared product goals do not imply identical enforcement mechanisms.</div>
+    </div>
+
+    <div class="diagram">
+      <div class="flow">
+        <div class="step"><b>Program</b><br>Runs in user space with memory, FDs, env, cwd, credentials.</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Syscall / IPC / Gateway</b><br>Requests a kernel or broker-mediated action.</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Kernel / Trusted Broker</b><br>Checks credentials, namespaces, filters, limits, policy.</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Resource</b><br>File, network, process, device, credential, API.</div>
+      </div>
+    </div>
+  </section>
+
+  <article id="m0" class="module">
+    <div class="module-header"><div class="num">0</div><div><h2>What Is An OS Boundary?</h2><p class="summary">The operating system is a privileged resource manager. A sandbox is a narrower contract for what the kernel or trusted brokers will do for a process.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Explain user space vs kernel space.</li><li>Identify resources the OS mediates.</li><li>Separate isolation from high-level policy.</li><li>Understand what an escape means.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>Applications do not touch disks, sockets, process tables, devices, or other processes directly. They ask the kernel. The sandbox reduces what the kernel or a trusted broker will do on behalf of the process.</p></div>
+    </div>
+    <h3>Why It Exists</h3>
+    <p>Without a privileged mediator, one program could overwrite another program's memory, read arbitrary storage, configure hardware, bind any port, or impersonate any user. OS boundaries let mutually suspicious programs share one machine.</p>
+    <h3>Linux Mechanics</h3>
+    <p>Linux uses CPU privilege levels, virtual memory, process credentials, file permissions, capabilities, namespaces, cgroups, Linux Security Modules such as SELinux/AppArmor/Landlock, and seccomp filters. Processes enter the kernel through syscalls, faults, interrupts, and signals.</p>
+    <h3>macOS and Windows</h3>
+    <p>macOS uses XNU, POSIX permissions, Seatbelt/App Sandbox, entitlements, SIP, TCC privacy controls, XPC, and code signing. Windows uses NT objects, access tokens, SIDs, ACLs, integrity levels, AppContainer, Job Objects, capabilities, and Hyper-V-backed isolation.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>Access to kernel-mediated resources.</li><li>Filesystem, process, network, IPC, and device visibility.</li><li>Resource limits and privilege reductions.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>Application correctness.</li><li>Secrets already loaded into memory.</li><li>Kernel bugs or hardware attacks.</li><li>Behavior outside the mediated path.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><p>On Linux, run:</p><pre><code>uname -a
+id
+ulimit -a
+mount | head
+ps aux | head</code></pre><p>For each output, label the OS resource or policy surface it describes.</p></div>
+    <div class="callout warn"><b>Gotcha:</b> Containers are OS isolation, not VM isolation. They share the host kernel unless backed by a VM or microVM.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=user+mode+kernel+mode+operating+system">Video search: user/kernel mode</a><a href="https://www.youtube.com/results?search_query=Linux+namespaces+cgroups+seccomp+explained">Video search: Linux sandbox primitives</a></p>
+  </article>
+
+  <article id="m1" class="module">
+    <div class="module-header"><div class="num">1</div><div><h2>Processes</h2><p class="summary">A process is an execution container: address space, threads, credentials, environment, open descriptors, current directory, limits, and kernel bookkeeping.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Define process, thread, PID, parent, and child.</li><li>Understand inheritance across process creation.</li><li>Explain why file descriptors and environment matter.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>A sandbox normally starts by launching untrusted code as a separate process, then reducing what that process inherits and what it can ask the OS to do.</p></div>
+    </div>
+    <h3>Why It Exists</h3>
+    <p>Processes let many programs share hardware while preserving private memory and controlled access to shared resources. Threads share a process address space; processes do not.</p>
+    <h3>Linux Mechanics</h3>
+    <p>Linux creates tasks with <code>fork()</code>, <code>clone()</code>, and <code>execve()</code>. <code>fork()</code> copies process state using copy-on-write. <code>execve()</code> replaces the program image but preserves selected state, including PID, credentials, environment, working directory, resource limits, and file descriptors not marked close-on-exec.</p>
+    <h3>macOS and Windows</h3>
+    <p>macOS is Unix-like and supports <code>fork()</code>/<code>exec()</code>, though post-fork behavior in multi-threaded programs is delicate. Windows primarily uses <code>CreateProcess</code>, explicit handle inheritance, access tokens, environment blocks, and Job Objects; it has no normal <code>fork()</code> equivalent.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>Memory isolation between processes.</li><li>Lifecycle control and process tree supervision.</li><li>Descriptor, environment, and credential hygiene at launch.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>Least privilege by itself.</li><li>Safe use of inherited secrets.</li><li>Termination of all descendants unless process groups, jobs, or subreapers are used.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>echo $$
+ps -o pid,ppid,pgid,sid,comm -p $$
+ls -l /proc/$$/fd
+env | sort | head</code></pre><p>Start a child shell and compare PID, PPID, file descriptors, environment, and working directory.</p></div>
+    <div class="callout warn"><b>Gotcha:</b> File descriptors are capabilities. A child with an open descriptor to a secret can keep using it even if the path later disappears from its filesystem view.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=fork+exec+explained">Video search: fork/exec</a><a href="https://www.youtube.com/results?search_query=Linux+process+model+proc+filesystem">Video search: Linux process model</a></p>
+  </article>
+
+  <article id="m2" class="module">
+    <div class="module-header"><div class="num">2</div><div><h2>Users, Groups, and Permissions</h2><p class="summary">Identity gives the kernel a subject to authorize. It is necessary for sandboxing, but not sufficient.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Understand UID/GID, real/effective IDs, and groups.</li><li>Explain permission bits, ACLs, and capabilities.</li><li>Know why same-UID sandboxes are weak.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>The OS asks: who is making this request? Then it checks object permissions, capabilities, policy modules, and namespace state.</p></div>
+    </div>
+    <h3>Linux Mechanics</h3>
+    <p>Linux processes have real, effective, saved, and filesystem UIDs/GIDs plus supplementary groups. Files have owner, group, mode bits, and optionally ACLs. Root traditionally bypasses many checks, but Linux capabilities split root power into units such as <code>CAP_NET_ADMIN</code>, <code>CAP_SYS_ADMIN</code>, <code>CAP_SYS_PTRACE</code>, and <code>CAP_SYS_CHROOT</code>.</p>
+    <h3>macOS and Windows</h3>
+    <p>macOS has POSIX users/groups, ACLs, entitlements, TCC, SIP, and sandbox profiles. Windows centers on access tokens containing SIDs, groups, privileges, integrity level, and capabilities; objects have security descriptors and ACLs.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>File ownership boundaries.</li><li>Service account separation.</li><li>Reduced privileged operations through capability dropping.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>Network egress by itself.</li><li>Fine-grained application intent.</li><li>Access through already-open descriptors.</li><li>Security if broad capabilities remain.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>id
+touch /tmp/perm-demo
+ls -l /tmp/perm-demo
+chmod 600 /tmp/perm-demo
+ls -l /tmp/perm-demo</code></pre><p>If available, try <code>sudo -u nobody cat /tmp/perm-demo</code> and observe the denial.</p></div>
+    <div class="callout danger"><b>Gotcha:</b> <code>CAP_SYS_ADMIN</code> is famously broad. In many sandbox designs, retaining it is close to retaining root-shaped escape power.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=Unix+file+permissions+explained">Video search: Unix permissions</a><a href="https://www.youtube.com/results?search_query=Linux+capabilities+explained">Video search: Linux capabilities</a></p>
+  </article>
+
+  <article id="m3" class="module">
+    <div class="module-header"><div class="num">3</div><div><h2>Syscalls</h2><p class="summary">Syscalls are the kernel API. Every file, process, network, memory, and device operation eventually crosses this boundary.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Define a syscall.</li><li>Recognize major syscall families.</li><li>Use <code>strace</code> to observe process behavior.</li><li>Understand why syscall filtering is low-level.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>User code cannot open a file, connect a socket, map memory, or start a process directly. It asks the kernel through a syscall such as <code>openat</code>, <code>connect</code>, <code>mmap</code>, <code>clone</code>, or <code>execve</code>.</p></div>
+    </div>
+    <h3>Linux Mechanics</h3>
+    <p>libc usually wraps raw syscalls, but programs can invoke them directly. The kernel dispatches by syscall number, copies arguments across the user/kernel boundary, validates pointers and permissions, updates state, then returns a value or <code>errno</code>.</p>
+    <h3>macOS and Windows</h3>
+    <p>macOS has BSD syscalls plus Mach traps and higher-level security mechanisms. Windows applications usually call Win32 APIs above lower-level NT syscalls; syscall numbers are not a stable application contract.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>Deny process creation, networking, tracing, module loading, mount operations, or dangerous syscall families.</li><li>Reduce kernel attack surface.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>High-level intent.</li><li>Safe path decisions without additional context.</li><li>Meaning of pointer-referenced data in general.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>strace -f -e trace=file,process,network ls /tmp</code></pre><p>Notice how much work happens before the visible command output appears: dynamic linking, locale, filesystem probes, and process setup.</p></div>
+    <div class="callout warn"><b>Gotcha:</b> <code>write()</code> might write a harmless log or exfiltrate a secret. Syscall filters see mechanism, not business intent.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=Linux+syscalls+explained+strace">Video search: syscalls and strace</a><a href="https://www.youtube.com/results?search_query=seccomp+bpf+tutorial">Video search: seccomp BPF</a></p>
+  </article>
+
+  <article id="m4" class="module">
+    <div class="module-header"><div class="num">4</div><div><h2>Filesystem Isolation</h2><p class="summary">Filesystem isolation changes which names exist and what storage those names point to.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Distinguish permissions from namespace isolation.</li><li>Understand <code>chroot</code>, <code>pivot_root</code>, bind mounts, mount namespaces, <code>tmpfs</code>, and overlayfs.</li><li>Recognize symlink and open-FD hazards.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>A path such as <code>/etc/passwd</code> is resolved through root directory, current directory, mount table, credentials, and permissions. Change the mount table and root, and the process sees a different world.</p></div>
+    </div>
+    <h3>Linux Mechanics</h3>
+    <p>Linux mount namespaces give a process tree its own mount table. Sandboxes combine bind mounts, read-only remounts, private mount propagation, <code>tmpfs</code>, overlayfs, <code>pivot_root</code> or <code>chroot</code>, and a carefully curated <code>/proc</code>, <code>/dev</code>, and <code>/sys</code>.</p>
+    <h3>macOS and Windows</h3>
+    <p>macOS uses App Sandbox file entitlements, TCC privacy prompts, SIP, POSIX permissions, ACLs, and sandbox profiles; Linux-style mount namespaces normally require a Linux VM. Windows uses ACLs, AppContainer capabilities, integrity levels, Windows containers, and object namespaces.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>Hide or replace path hierarchies.</li><li>Expose selected paths read-only.</li><li>Provide disposable writable layers.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>Network or CPU limits.</li><li>Safety if mount privileges remain.</li><li>Protection from already-open file descriptors.</li><li>Kernel filesystem bugs.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>sudo unshare --mount bash
+mount --make-rprivate /
+mkdir -p /tmp/sandbox-root/tmp
+mount -t tmpfs tmpfs /tmp/sandbox-root/tmp
+mount | grep sandbox-root</code></pre><p>This demonstrates a private mount change. Do not run broad mount commands on a production host.</p></div>
+    <div class="callout danger"><b>Gotcha:</b> <code>chroot</code> alone is not a strong sandbox, especially for privileged processes. Treat it as one filesystem-shaping tool, not a complete boundary.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=Linux+mount+namespaces+explained">Video search: mount namespaces</a><a href="https://man7.org/linux/man-pages/man7/mount_namespaces.7.html">man7: mount_namespaces</a></p>
+  </article>
+
+  <article id="m5" class="module">
+    <div class="module-header"><div class="num">5</div><div><h2>Process Isolation</h2><p class="summary">Process isolation controls which processes can see, signal, debug, wait for, or inherit from each other.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Understand PID namespaces, <code>/proc</code>, signals, process groups, and sessions.</li><li>Know why PID 1 is special.</li><li>Understand <code>ptrace</code> and process inspection risks.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>Untrusted code should not be able to inspect or interfere with host processes. A sandbox also needs lifecycle control over all descendants.</p></div>
+    </div>
+    <h3>Linux Mechanics</h3>
+    <p>PID namespaces give processes a separate PID view. The first process becomes PID 1 inside that namespace and must reap orphaned children. Process visibility also depends on <code>/proc</code> mounts, credentials, capabilities, <code>ptrace</code> restrictions, sessions, process groups, cgroups, and Yama settings.</p>
+    <h3>macOS and Windows</h3>
+    <p>macOS lacks Linux-style PID namespaces and relies on users, sandbox profiles, SIP, hardened runtime, launchd, and XPC. Windows uses access tokens, integrity levels, Job Objects, AppContainer, process mitigation policies, and container silos.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>Hide host PIDs.</li><li>Prevent ordinary signaling and debugging across boundaries.</li><li>Manage a sandbox process tree.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>CPU or memory limits without resource controls.</li><li>Filesystem or network restrictions.</li><li>Child cleanup unless PID 1 or a supervisor does the work.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>sudo unshare --pid --fork --mount-proc bash
+ps aux
+echo $$</code></pre><p>The shell should appear as PID 1 inside the new namespace.</p></div>
+    <div class="callout warn"><b>Gotcha:</b> A PID namespace without a private <code>/proc</code> produces confusing and sometimes leaky visibility.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=Linux+PID+namespaces+explained">Video search: PID namespaces</a><a href="https://man7.org/linux/man-pages/man7/pid_namespaces.7.html">man7: pid_namespaces</a></p>
+  </article>
+
+  <article id="m6" class="module">
+    <div class="module-header"><div class="num">6</div><div><h2>Network Isolation</h2><p class="summary">Network isolation changes interfaces, routes, ports, firewall state, DNS behavior, and which remote systems a process can reach.</p></div></div>
+    <div class="diagram">
+      <div class="flow">
+        <div class="step"><b>Process</b><br>socket(), connect()</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Network namespace</b><br>interfaces, routes, loopback</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Firewall / NAT / Proxy</b><br>egress control</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Remote endpoint</b><br>internet, metadata, internal service</div>
+      </div>
+    </div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Understand sockets, loopback, routes, NAT, veth pairs, and firewalls.</li><li>Explain proxy-only egress.</li><li>Know why <code>HTTP_PROXY</code> is not a boundary.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>Network access is a combination of socket syscalls, namespace state, routing tables, packet filters, DNS configuration, and reachable local/remote services.</p></div>
+    </div>
+    <h3>Linux Mechanics</h3>
+    <p>Linux network namespaces isolate interfaces, routing tables, ARP tables, port binding space, and packet-filter state. Containers commonly connect through a veth pair and bridge, then use NAT or routed networking. A fresh namespace starts with loopback down.</p>
+    <h3>macOS and Windows</h3>
+    <p>macOS does not provide Linux network namespaces for ordinary processes; Docker Desktop uses a VM. macOS controls include PF, Network Extension, entitlements, and application firewall. Windows uses Windows Filtering Platform, firewall rules, HNS/WinNAT, AppContainer network capabilities, and Hyper-V isolation.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>No network by omitting interfaces/routes.</li><li>Separate loopback and port spaces.</li><li>Egress through firewall or proxy.</li><li>Metadata service blocking.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>Application-layer policy by itself.</li><li>DNS safety unless resolver path is controlled.</li><li>Strong egress if privileged code can reconfigure networking.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>sudo unshare --net bash
+ip link
+ping -c 1 127.0.0.1
+ip link set lo up
+ping -c 1 127.0.0.1</code></pre><p>Observe that even loopback must be explicitly enabled in a fresh namespace.</p></div>
+    <div class="callout danger"><b>Gotcha:</b> <code>HTTP_PROXY</code> is configuration. A generated binary can ignore it unless direct egress is blocked at the network layer.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=Linux+network+namespaces+veth+bridge+NAT">Video search: netns/veth/NAT</a><a href="https://man7.org/linux/man-pages/man7/network_namespaces.7.html">man7: network_namespaces</a></p>
+  </article>
+
+  <article id="m7" class="module">
+    <div class="module-header"><div class="num">7</div><div><h2>Seccomp</h2><p class="summary">Seccomp restricts which syscalls a process may make. It reduces kernel attack surface; it does not understand business intent.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Understand seccomp strict vs BPF filter mode.</li><li>Know allowlist vs denylist tradeoffs.</li><li>Understand <code>KILL</code>, <code>ERRNO</code>, <code>TRAP</code>, <code>TRACE</code>, <code>LOG</code>, and <code>USER_NOTIF</code> style outcomes.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>Even after filesystem and network isolation, a compromised process can exercise a large kernel API. Seccomp blocks syscalls the workload should never need.</p></div>
+    </div>
+    <h3>Linux Mechanics</h3>
+    <p>Seccomp filter mode uses BPF programs installed by the process or runtime. Filters match syscall number and limited argument values, then return an action such as allow, kill, return errno, trap, trace, log, or user notification. Filters are inherited across <code>fork()</code> and <code>execve()</code>.</p>
+    <h3>macOS and Windows</h3>
+    <p>macOS does not have seccomp; similar goals are covered by Seatbelt/App Sandbox, entitlements, SIP, hardened runtime, and Endpoint Security. Windows uses AppContainer, restricted tokens, process mitigation policies, Win32k lockdown, object ACLs, and WDAC/AppLocker.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>Block syscall classes.</li><li>Reduce kernel attack surface.</li><li>Make dangerous operations fail even if app code is compromised.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>High-level meaning of a request.</li><li>Path policy reliably.</li><li>Inspection of pointer data in general.</li><li>Safety after overly broad syscalls are allowed.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>docker run --rm alpine sh -c 'grep Seccomp /proc/self/status'
+docker run --rm --security-opt seccomp=unconfined alpine sh -c 'grep Seccomp /proc/self/status'</code></pre><p>Compare the seccomp mode under Docker's default profile and unconfined mode.</p></div>
+    <div class="callout warn"><b>Gotcha:</b> Denylists age poorly as new syscalls appear. For strong workloads, prefer allowlists shaped from observed behavior and tested under realistic startup paths.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=seccomp+BPF+explained">Video search: seccomp BPF</a><a href="https://man7.org/linux/man-pages/man2/seccomp.2.html">man7: seccomp</a></p>
+  </article>
+
+  <article id="m8" class="module">
+    <div class="module-header"><div class="num">8</div><div><h2>Cgroups and Resource Isolation</h2><p class="summary">A process can be safely denied sensitive resources and still harm the host by consuming all CPU, memory, PIDs, disk, or IO.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Understand CPU, memory, PID, IO, and device controls.</li><li>Know cgroup v1 vs v2 exists.</li><li>Compare Linux cgroups to Windows Job Objects.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>Resource isolation makes abuse survivable. It is the practical defense against fork bombs, memory bombs, and noisy-neighbor failures.</p></div>
+    </div>
+    <h3>Linux Mechanics</h3>
+    <p>Cgroups group processes into a hierarchy with controllers. In cgroup v2, common files include <code>cpu.max</code>, <code>memory.max</code>, <code>pids.max</code>, <code>io.max</code>, and pressure stall information. systemd, Docker, Kubernetes, and container runtimes build on cgroups.</p>
+    <h3>macOS and Windows</h3>
+    <p>macOS has <code>setrlimit</code>, launchd limits, QoS classes, and memory pressure systems but no direct cgroup equivalent. Windows has Job Objects, working-set limits, CPU rate controls, memory limits, quotas, and container resource governance.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>CPU quotas and weights.</li><li>Memory ceilings and OOM behavior.</li><li>Maximum process counts.</li><li>Some block IO throttling.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>Perfect latency guarantees.</li><li>All disk capacity limits without quotas.</li><li>Network bandwidth without traffic controls.</li><li>Application-level fairness.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>systemd-run --user --scope -p MemoryMax=200M -p CPUQuota=50% bash
+cat /proc/self/cgroup</code></pre><p>This starts a scoped shell with systemd-managed resource controls, where available.</p></div>
+    <div class="callout warn"><b>Gotcha:</b> Memory limits often end in an OOM kill, not a clean exception. Application runtimes may need their own heap settings aligned with the cgroup limit.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=Linux+cgroups+explained">Video search: cgroups</a><a href="https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html">Kernel docs: cgroup v2</a></p>
+  </article>
+
+  <article id="m9" class="module">
+    <div class="module-header"><div class="num">9</div><div><h2>Containers, VMs, and microVMs</h2><p class="summary">Containers restrict a process's view of one host kernel. VMs run a separate guest kernel. microVMs try to make VM isolation operationally lightweight.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Distinguish containers, VMs, and microVMs.</li><li>Know which Linux primitives make containers work.</li><li>Decide when sharing a kernel is acceptable.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>Containers are packaged process isolation. VMs are kernel isolation. microVMs are optimized VMs intended to reduce the cost of stronger isolation.</p></div>
+    </div>
+    <h3>First Principles</h3>
+    <p>A program is isolated only to the extent that its view of files, processes, network, users, devices, clocks, kernel APIs, and hardware is controlled. Containers are namespaced processes. VMs virtualize hardware and boot a guest OS. microVMs use minimal VMMs such as Firecracker or Cloud Hypervisor for fast, high-density VM isolation.</p>
+    <h3>Linux Mechanics</h3>
+    <p>Containers combine namespaces, cgroups, capabilities, seccomp, <code>pivot_root</code>, bind mounts, overlay filesystems, and LSMs. VMs usually use KVM plus QEMU or another VMM. microVMs use KVM with minimal devices, often virtio.</p>
+    <h3>Platform Notes</h3>
+    <p>Docker on macOS usually runs Linux containers inside a Linux VM. Windows has Windows containers, Hyper-V isolation, Job Objects, AppContainers, integrity levels, and Windows Sandbox. Linux containers and Windows containers are different OS-specific mechanisms.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>Namespace and cgroup separation.</li><li>Kernel attack surface reduction.</li><li>Stronger kernel separation with VM/microVM.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>Protection from shared-kernel bugs in plain containers.</li><li>Safety from privileged containers.</li><li>Secret isolation if secrets are mounted or inherited.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>docker run --rm -it --network=none --pids-limit=64 --memory=128m --cap-drop=ALL alpine sh</code></pre><p>Inside, inspect <code>/proc</code>, try networking, and compare visibility with the host.</p></div>
+    <div class="callout danger"><b>Gotcha:</b> Mounting <code>/var/run/docker.sock</code> into a container usually grants near-host-root control.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=Liz+Rice+containers+from+scratch">Video search: containers from scratch</a><a href="https://www.youtube.com/results?search_query=Firecracker+microVM+architecture">Video search: Firecracker</a></p>
+  </article>
+
+  <article id="m10" class="module">
+    <div class="module-header"><div class="num">10</div><div><h2>Shells and Command Execution</h2><p class="summary">A shell is an interpreter that turns text into process creation, pipes, redirects, expansion, and file descriptor manipulation.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Understand shell parsing, expansion, redirection, and pipelines.</li><li>Know why argument arrays are safer than shell strings.</li><li>Understand command injection and <code>PATH</code> risks.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>The OS executes an executable path with argv, environment, cwd, descriptors, and credentials. A shell adds a language on top of that. That language is powerful and easy to misuse.</p></div>
+    </div>
+    <h3>Linux and macOS</h3>
+    <p>A shell typically forks, creates pipes with <code>pipe()</code>, redirects descriptors with <code>open()</code> and <code>dup2()</code>, then calls <code>execve()</code>. It expands variables, globs, quotes, command substitutions, redirects, conditionals, and pipelines before the target program runs.</p>
+    <h3>Windows</h3>
+    <p>Windows process creation centers on <code>CreateProcess</code> and a command-line string. <code>cmd.exe</code>, PowerShell, MSVCRT, and custom parsers differ. There is no single universal Unix-style argv parsing rule.</p>
+    <div class="two">
+      <div class="box"><h4>Can Help Enforce</h4><ul><li>Semantic command policy if the shell is controlled.</li><li>Safer execution through fixed paths and argv arrays.</li><li>Environment and cwd control.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>Safety when untrusted input is concatenated into shell strings.</li><li>Isolation from native binaries that bypass the shell.</li><li>Protection from inherited FDs or credentials.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><p>Compare a shell string and an argument array in your preferred language. Test inputs such as <code>hello; id</code>, <code>$(id)</code>, and <code>*.txt</code>.</p></div>
+    <div class="callout warn"><b>Gotcha:</b> Escaping is harder than avoiding the shell. Prefer argv APIs unless you explicitly need shell language features.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=command+injection+explained">Video search: command injection</a><a href="https://owasp.org/www-community/attacks/Command_Injection">OWASP: command injection</a></p>
+  </article>
+
+  <article id="m11" class="module">
+    <div class="module-header"><div class="num">11</div><div><h2>Interpreters and Generated Code</h2><p class="summary">The kernel sees syscalls from a process. It does not care whether the process is running compiled code, Python, Node, templates, or generated source.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Recognize interpreter boundaries.</li><li>Separate data parsing from code execution.</li><li>Understand why generated native code still needs OS controls.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>Interpreter hooks can add semantic policy, but the OS boundary must still mediate the effects of code the interpreter does not understand.</p></div>
+    </div>
+    <h3>First Principles</h3>
+    <p>An interpreter takes input and executes behavior described by that input. Sometimes the input is obviously code. Sometimes it is configuration, templates, regexes, SQL, YAML tags, serialized objects, workflow definitions, or generated source.</p>
+    <h3>Linux Mechanics</h3>
+    <p>Interpreter-specific controls live above the kernel: restricted language subsets, process separation, OS namespaces, seccomp, cgroups, read-only filesystems, or VM/microVM boundaries. Shebang scripts use <code>#!</code> so the kernel invokes an interpreter path with the script as input.</p>
+    <h3>Platform Notes</h3>
+    <p>macOS is similar for Unix runtimes. Windows uses file associations, <code>PATHEXT</code>, explicit launchers, PowerShell execution policy, application control, .NET/JVM runtime mechanisms, and browser engine sandboxes.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>Domain-specific constraints with deliberately limited languages.</li><li>Safer plugins through process isolation.</li><li>Policy when runtime hooks are complete.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>Security if filesystem/network/native APIs remain exposed.</li><li>Resource safety without CPU/memory/time limits.</li><li>Safety from injection into generated source.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><p>Render user input through a template engine and test engine-specific syntax such as <code>{{ 7 * 7 }}</code>. Confirm whether the engine treats it as text or executable template logic.</p></div>
+    <div class="callout danger"><b>Gotcha:</b> "Safe eval" is rarely safe unless the language was designed for confinement and the runtime API surface is deliberately small.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=server+side+template+injection+explained">Video search: template injection</a><a href="https://owasp.org/www-project-cheat-sheets/">OWASP cheat sheets</a></p>
+  </article>
+
+  <article id="m12" class="module">
+    <div class="module-header"><div class="num">12</div><div><h2>File Descriptors and IPC</h2><p class="summary">File descriptors are references to kernel objects. In practice, they are capabilities.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Understand FDs, pipes, sockets, shared memory, and Unix domain sockets.</li><li>Know how FDs survive <code>fork</code> and <code>exec</code>.</li><li>Recognize descriptor leaks as authority leaks.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>If a process has a descriptor, it may use the object even if path-based permissions would no longer let it open that object.</p></div>
+    </div>
+    <h3>Linux Mechanics</h3>
+    <p><code>open()</code> returns a descriptor. <code>read()</code>, <code>write()</code>, <code>ioctl()</code>, <code>poll()</code>, <code>epoll()</code>, <code>sendmsg()</code>, and <code>recvmsg()</code> operate on descriptors. <code>fork()</code> inherits descriptors. <code>execve()</code> preserves them unless <code>FD_CLOEXEC</code> is set. Unix domain sockets can pass FDs with <code>SCM_RIGHTS</code>.</p>
+    <h3>macOS and Windows</h3>
+    <p>macOS has POSIX descriptors, Unix sockets, kqueue, Mach ports, and XPC. Windows uses handles for files, processes, threads, tokens, events, pipes, sections, sockets, and more; inheritance and duplication use <code>CreateProcess</code>, <code>DuplicateHandle</code>, ACLs, and Job Objects.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>Narrow access by passing only specific descriptors.</li><li>Brokered designs with privileged holders.</li><li>Path-independent pre-opened resource access.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>Safety if powerful descriptors leak.</li><li>Path restrictions after directory FDs are inherited.</li><li>Protocol correctness over IPC.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>ls -l /proc/$$/fd
+exec 3&lt;/etc/passwd
+ls -l /proc/$$/fd</code></pre><p>Notice the new descriptor. If passed to a child, it carries read authority.</p></div>
+    <div class="callout danger"><b>Gotcha:</b> A host directory FD plus <code>openat()</code> can bypass naive path assumptions.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=Unix+file+descriptors+explained">Video search: file descriptors</a><a href="https://www.youtube.com/results?search_query=Unix+domain+sockets+file+descriptor+passing">Video search: FD passing</a></p>
+  </article>
+
+  <article id="m13" class="module">
+    <div class="module-header"><div class="num">13</div><div><h2>Credentials and Secret Boundaries</h2><p class="summary">A secret is any value that grants access if copied. A sandbox that exposes secrets has already granted authority.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Separate identity, authorization, credentials, and secret material.</li><li>Find common secret exposure paths.</li><li>Understand brokered credential use.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>If untrusted code receives a raw bearer secret, policy has already lost meaningful control over how that authority is used.</p></div>
+    </div>
+    <h3>Where Secrets Appear</h3>
+    <p>Credentials can live in environment variables, config files, mounted volumes, process memory, crash dumps, swap, logs, <code>/proc</code>, local agents, Unix sockets, cloud metadata services, browser stores, keychains, and credential helpers.</p>
+    <h3>Linux Mechanics</h3>
+    <p>Linux controls include file permissions, namespaces, <code>hidepid</code> on <code>/proc</code>, <code>prctl</code> dumpability, tmpfs, keyrings, capabilities, <code>mlock</code>, and LSM policies. Kernel credentials such as UID/GID/capabilities are different from application credentials such as API keys and AWS tokens.</p>
+    <h3>macOS and Windows</h3>
+    <p>macOS commonly uses Keychain, app sandbox entitlements, TCC, SIP, and launchd. Windows uses Credential Manager, DPAPI, protected LSASS material, access tokens, ACLs, integrity levels, AppContainers, and service accounts.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>Scoped, short-lived credential use.</li><li>Secret retrieval outside untrusted code.</li><li>Audit through identity-aware helpers.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>Protection after a raw secret is handed to malicious code.</li><li>Safety from logs and crash dumps unless controlled.</li><li>Least privilege if all workloads share a credential.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>env | sort
+tr '\0' '\n' &lt; /proc/$$/environ</code></pre><p>Identify variables you would not want inherited by an untrusted child process.</p></div>
+    <div class="callout danger"><b>Gotcha:</b> Environment variables are convenient, inherited by default, easy to dump, and frequently logged.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=AWS+IAM+roles+temporary+credentials+explained">Video search: temporary credentials</a><a href="https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html">OWASP: secrets management</a></p>
+  </article>
+
+  <article id="m14" class="module">
+    <div class="module-header"><div class="num">14</div><div><h2>User-Space Gateways and Proxies</h2><p class="summary">A gateway is a trusted broker. The sandbox asks the broker for a narrow operation instead of receiving direct access to the resource.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Explain brokered access.</li><li>Distinguish advisory proxies from enforced egress paths.</li><li>Identify gateway bypass and confused-deputy risks.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>A gateway is useful only if the sandbox makes it the effective path to the resource. Otherwise it is just a convention.</p></div>
+    </div>
+    <div class="diagram">
+      <div class="flow">
+        <div class="step"><b>Sandboxed process</b><br>No raw secret, no direct route</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Gateway</b><br>authenticate, authorize, validate, log</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Credential provider</b><br>sign or inject if allowed</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Remote API</b><br>AWS, MCP, OpenAPI, model provider</div>
+      </div>
+    </div>
+    <h3>Linux Mechanics</h3>
+    <p>Gateways use Unix sockets, network proxies, local endpoints, FUSE, D-Bus, sidecars, or seccomp user notification. The key condition is that direct access is blocked; otherwise the process can route around the broker.</p>
+    <h3>macOS and Windows</h3>
+    <p>macOS uses XPC, launchd services, Network Extension, app sandbox brokers, and permission prompts. Windows uses services, named pipes, RPC, COM brokers, AppContainer brokers, Windows Filtering Platform, and enterprise proxy controls.</p>
+    <div class="two">
+      <div class="box"><h4>Can Enforce</h4><ul><li>Allowlisted operations.</li><li>Central auth, validation, rate limits, and audit.</li><li>Credential use without handing raw secrets to the process.</li></ul></div>
+      <div class="box"><h4>Cannot Enforce</h4><ul><li>Security if clients can bypass the gateway.</li><li>Safety from confused-deputy broker bugs.</li><li>No exfiltration through allowed channels unless content/volume is controlled.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><p>Run a local mock HTTP service that allows only one path. Configure a test process to use it, then confirm that a direct call fails when network isolation blocks non-proxy egress.</p></div>
+    <div class="callout danger"><b>Gotcha:</b> A proxy is not a boundary if direct sockets, SSH, DNS tunneling, metadata endpoints, or privileged Unix sockets remain reachable.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=Chrome+sandbox+broker+process+architecture">Video search: browser brokers</a><a href="https://www.youtube.com/results?search_query=seccomp+user+notification+explained">Video search: seccomp user notification</a></p>
+  </article>
+
+  <article id="m15" class="module">
+    <div class="module-header"><div class="num">15</div><div><h2>Observability and Debugging</h2><p class="summary">Debugging a sandbox means asking what world the process sees, and what operation the kernel or broker denied.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Inspect namespaces, mounts, FDs, cgroups, and network state.</li><li>Trace syscalls and denials.</li><li>Map application symptoms to enforcing layers.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>Most sandbox failures surface as generic errors. Observability lets you identify whether the denial came from filesystem, network, capability, seccomp, cgroup, LSM, or policy.</p></div>
+    </div>
+    <h3>Linux Inspection Toolkit</h3>
+    <pre><code># Process state
+cat /proc/&lt;pid&gt;/status
+cat /proc/&lt;pid&gt;/limits
+cat /proc/&lt;pid&gt;/cgroup
+
+# Namespaces and mounts
+ls -l /proc/&lt;pid&gt;/ns
+lsns -p &lt;pid&gt;
+cat /proc/&lt;pid&gt;/mountinfo
+
+# File descriptors and sockets
+ls -l /proc/&lt;pid&gt;/fd
+lsof -p &lt;pid&gt;
+
+# Capabilities and network
+grep Cap /proc/&lt;pid&gt;/status
+getpcaps &lt;pid&gt;
+nsenter -t &lt;pid&gt; -n ip addr
+nsenter -t &lt;pid&gt; -n ss -tulpn
+
+# Syscalls and denials
+strace -f -e trace=file,network,process ./program
+journalctl -k
+ausearch -m SECCOMP,AVC,USER_AVC</code></pre>
+    <h3>macOS and Windows</h3>
+    <p>macOS: <code>ps</code>, <code>lsof</code>, <code>log stream</code>, <code>log show</code>, Instruments, and limited <code>dtruss</code> depending on SIP. Windows: Process Explorer, Process Monitor, Event Viewer, ETW, <code>whoami /priv</code>, <code>icacls</code>, and WFP inspection tools.</p>
+    <div class="two">
+      <div class="box"><h4>Can Help Identify</h4><ul><li>Which namespace and cgroup a process is in.</li><li>Which files and sockets are open.</li><li>Which syscall failed and with which errno.</li><li>Whether a policy layer logged a denial.</li></ul></div>
+      <div class="box"><h4>Cannot Prove</h4><ul><li>That the sandbox is complete.</li><li>That all denials are logged.</li><li>That no side channel exists.</li><li>That debug access is safe to grant broadly.</li></ul></div>
+    </div>
+    <table>
+      <tr><th>Symptom</th><th>Possible Layer</th></tr>
+      <tr><td><code>ENOENT</code></td><td>Missing mount, different root, wrong cwd, hidden path.</td></tr>
+      <tr><td><code>EACCES</code></td><td>Unix permissions, ACL, read-only mount, LSM, parent directory execute bit.</td></tr>
+      <tr><td><code>EPERM</code></td><td>Missing capability, seccomp, namespace restriction, immutable flag, LSM.</td></tr>
+      <tr><td>Timeout</td><td>No route, DNS failure, firewall, proxy, unreachable dependency.</td></tr>
+      <tr><td>Killed</td><td>OOM cgroup, seccomp kill action, supervisor signal, platform policy.</td></tr>
+    </table>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>sudo unshare --net --fork bash
+ip addr
+ping -c 1 8.8.8.8</code></pre><p>From another terminal, find the PID and inspect <code>/proc/&lt;pid&gt;/ns</code> and <code>nsenter -t &lt;pid&gt; -n ip addr</code>.</p></div>
+    <div class="callout warn"><b>Gotcha:</b> Debug access can weaken isolation. Granting <code>SYS_PTRACE</code> or broad <code>/proc</code> access is itself a security decision.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=strace+tutorial+Linux+syscalls">Video search: strace tutorial</a><a href="https://www.brendangregg.com/">Brendan Gregg: Linux performance/eBPF</a></p>
+  </article>
+
+  <article id="m16" class="module">
+    <div class="module-header"><div class="num">16</div><div><h2>Sandboxing Failure Modes</h2><p class="summary">Real sandbox failures are usually composition mistakes, not one primitive completely missing.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Recognize inherited authority, mount exposure, and network escape paths.</li><li>Separate isolation failures from policy failures.</li><li>Design for fail-closed behavior.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>A sandbox fails when constrained code can affect something outside the intended boundary. Most failures come from shared resources you forgot were still shared.</p></div>
+    </div>
+    <h3>Common Failure Categories</h3>
+    <table>
+      <tr><th>Category</th><th>Example</th><th>Mitigation</th></tr>
+      <tr><td>Inherited authority</td><td>Open FD to a secret survives <code>exec</code>.</td><td>Close FDs, use <code>O_CLOEXEC</code>, inspect <code>/proc/&lt;pid&gt;/fd</code>.</td></tr>
+      <tr><td>Mount exposure</td><td>Writable host directory mounted in sandbox.</td><td>Narrow bind mounts, read-only where possible, <code>nodev</code>, <code>nosuid</code>, <code>noexec</code>.</td></tr>
+      <tr><td>Network escape</td><td>Metadata service reachable.</td><td>Egress firewall, network namespace, metadata proxy or block.</td></tr>
+      <tr><td>Privileged socket</td><td>Docker socket mounted inside container.</td><td>Do not expose host control sockets.</td></tr>
+      <tr><td>Capability leak</td><td><code>CAP_SYS_ADMIN</code> retained.</td><td>Drop all capabilities; add back only specific ones.</td></tr>
+      <tr><td>Weak syscall filter</td><td>Dangerous syscalls still allowed.</td><td>Use tested allowlists where practical.</td></tr>
+      <tr><td>Process escape</td><td>Helper launched outside constraints.</td><td>Apply sandbox before exec and supervise the process tree.</td></tr>
+      <tr><td>Resource exhaustion</td><td>Fork bomb or memory spike.</td><td>cgroups, rlimits, PID limits.</td></tr>
+    </table>
+    <h3>Platform Examples</h3>
+    <p>Linux failures often involve namespace sharing, broad mounts, retained capabilities, missing seccomp, weak cgroups, leaked FDs, and host sockets. macOS failures often involve over-broad entitlements, TCC grants, helper tools outside the sandbox, and XPC confusion. Windows failures often involve token/ACL mistakes, named pipe or COM exposure, Job Object escape, AppContainer capability mistakes, and writable directories in privileged search paths.</p>
+    <div class="two">
+      <div class="box"><h4>Analysis Can Improve</h4><ul><li>Trust-boundary clarity.</li><li>Least privilege.</li><li>Fail-closed startup.</li><li>Escape-relevant tests and monitoring.</li></ul></div>
+      <div class="box"><h4>Cannot Guarantee</h4><ul><li>Kernel vulnerability resistance.</li><li>Correctness of all dependencies.</li><li>Safety if privileged host interfaces are intentionally exposed.</li><li>Protection from all side channels.</li></ul></div>
+    </div>
+    <div class="lab"><h4>Optional Lab</h4><pre><code>exec 3&lt;/etc/passwd
+bash -c 'ls -l /proc/$$/fd'</code></pre><p>Observe inherited descriptors. The child has access even if later path restrictions would hide <code>/etc/passwd</code>.</p></div>
+    <div class="callout danger"><b>Gotcha:</b> Debug flags, <code>--privileged</code>, host PID/network namespaces, broad writable mounts, and unconfined seccomp profiles can collapse a sandbox while still making it look "containerized".</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=container+escape+explained">Video search: container escape</a><a href="https://www.youtube.com/results?search_query=Docker+security+best+practices">Video search: Docker security</a></p>
+  </article>
+
+  <article id="m17" class="module">
+    <div class="module-header"><div class="num">17</div><div><h2>Putting The Primitives Together</h2><p class="summary">A practical sandbox is a composition. Each layer narrows one dimension of authority.</p></div></div>
+    <div class="two">
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Combine filesystem, network, process, syscall, and resource controls.</li><li>Understand why layering matters.</li><li>Map a workload contract to OS primitives.</li></ul></div>
+      <div class="box"><h4>Core Idea</h4><p>No primitive expresses the whole security policy. A coherent sandbox is a deliberately composed environment with explicit limits and explicit escape assumptions.</p></div>
+    </div>
+    <div class="diagram">
+      <div class="flow">
+        <div class="step"><b>Launch</b><br>clean env, close FDs, low uid</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Views</b><br>mount, PID, net, IPC namespaces</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Limits</b><br>cgroups, rlimits, capabilities</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Syscalls</b><br>seccomp and LSM policy</div>
+        <div class="arrow">&rarr;</div>
+        <div class="step"><b>Brokers</b><br>gateway, credentials, audit</div>
+      </div>
+    </div>
+    <h3>Minimal Linux Walkthrough With bubblewrap</h3>
+    <p><code>bubblewrap</code> exposes Linux sandboxing primitives directly without requiring you to write a runtime. Install it only on a machine where these experiments are appropriate.</p>
+    <pre><code># Debian/Ubuntu
+sudo apt-get install bubblewrap
+
+mkdir -p /tmp/sandbox-work
+
+bwrap \
+  --unshare-all \
+  --share-net \
+  --die-with-parent \
+  --new-session \
+  --ro-bind /usr /usr \
+  --ro-bind /bin /bin \
+  --ro-bind /lib /lib \
+  --ro-bind /lib64 /lib64 \
+  --ro-bind /etc/ld.so.cache /etc/ld.so.cache \
+  --ro-bind /etc/resolv.conf /etc/resolv.conf \
+  --proc /proc \
+  --dev /dev \
+  --tmpfs /tmp \
+  --bind /tmp/sandbox-work /work \
+  --chdir /work \
+  --setenv HOME /work \
+  --setenv PATH /usr/bin:/bin \
+  /bin/sh</code></pre>
+    <p>Inside the sandbox, try <code>pwd</code>, <code>touch allowed.txt</code>, <code>ls /</code>, <code>ls /home</code>, <code>ps aux</code>, and <code>ls -l /proc/$$/fd</code>. To remove network access, do not share the network namespace; exact behavior depends on host configuration and privileges.</p>
+    <h3>What Each Layer Contributes</h3>
+    <table>
+      <tr><th>Security Goal</th><th>Linux</th><th>macOS</th><th>Windows</th></tr>
+      <tr><td>Filesystem isolation</td><td>mount namespace, bind mounts, <code>pivot_root</code>, <code>chroot</code>, Landlock, AppArmor/SELinux</td><td>App Sandbox, Seatbelt, TCC, POSIX ACLs</td><td>ACLs, AppContainer, integrity levels, WDAC</td></tr>
+      <tr><td>Network isolation</td><td>network namespace, firewall, nftables/iptables, eBPF, proxy pinning</td><td>Network Extension, PF, app firewall, entitlements</td><td>Windows Filtering Platform, firewall, AppContainer capabilities</td></tr>
+      <tr><td>Syscall/API restriction</td><td>seccomp-BPF, LSM hooks</td><td>Seatbelt, SIP, Endpoint Security</td><td>AppContainer, mitigation policies, WDAC, Win32k lockdown</td></tr>
+      <tr><td>Process isolation</td><td>PID namespace, cgroups, rlimits, supervisors</td><td>launchd jobs, sandboxed apps, XPC services</td><td>Job Objects, process tokens, integrity levels</td></tr>
+      <tr><td>Privilege isolation</td><td>user namespaces, UID/GID maps, capabilities</td><td>users/groups, entitlements, SIP</td><td>access tokens, privileges, UAC, integrity levels</td></tr>
+      <tr><td>Resource limits</td><td>cgroups v2, <code>rlimit</code></td><td>launchd limits, <code>setrlimit</code>, pressure management</td><td>Job Objects, quotas, resource governance</td></tr>
+      <tr><td>Stronger boundary</td><td>KVM, Firecracker, Kata, gVisor</td><td>Virtualization Framework</td><td>Hyper-V, Windows Sandbox, Hyper-V containers</td></tr>
+      <tr><td>Observability</td><td><code>/proc</code>, <code>strace</code>, auditd, eBPF, <code>nsenter</code></td><td><code>log</code>, <code>dtruss</code>, Instruments, Console</td><td>ProcMon, Process Explorer, ETW, Event Viewer</td></tr>
+    </table>
+    <div class="callout"><b>Final mental model:</b> Start from the intended contract. "This process can read this input, write this output, use this gateway, and consume this much CPU/memory." Then map each part of the contract to a primitive. Avoid starting from a default container and hoping the defaults match the contract.</div>
+    <p class="resources"><a href="https://www.youtube.com/results?search_query=bubblewrap+Linux+sandbox+tutorial">Video search: bubblewrap sandbox</a><a href="https://www.youtube.com/results?search_query=gVisor+Firecracker+container+isolation">Video search: gVisor/Firecracker</a><a href="https://github.com/containers/bubblewrap">Bubblewrap project</a></p>
+  </article>
+
+  <section id="glossary" class="module">
+    <div class="module-header"><div class="num">G</div><div><h2>Glossary</h2><p class="summary">Terms that recur throughout sandbox design.</p></div></div>
+    <table>
+      <tr><th>Term</th><th>Meaning</th></tr>
+      <tr><td>Address space</td><td>The virtual memory view of a process.</td></tr>
+      <tr><td>Capability</td><td>On Linux, a split-out privileged operation formerly associated with root; more generally, a held authority.</td></tr>
+      <tr><td>Cgroup</td><td>Linux control group for resource accounting and limits.</td></tr>
+      <tr><td>Chroot</td><td>Changes process root path; useful but not a complete sandbox.</td></tr>
+      <tr><td>File descriptor</td><td>Process-local integer referring to an open kernel object.</td></tr>
+      <tr><td>LSM</td><td>Linux Security Module, such as SELinux, AppArmor, Smack, or Landlock.</td></tr>
+      <tr><td>Namespace</td><td>Linux mechanism that gives a process tree a separate view of a resource class.</td></tr>
+      <tr><td>Seccomp</td><td>Linux syscall filtering facility.</td></tr>
+      <tr><td>TCB</td><td>Trusted computing base: components that must be correct for the boundary to hold.</td></tr>
+      <tr><td>User space</td><td>Less-privileged execution mode where applications run.</td></tr>
+    </table>
+  </section>
+
+  <div class="footer">
+    A single-file local HTML course on OS sandboxing primitives. Open directly in a browser; no server required.
+  </div>
+</main>
+</div>
+</body>
+</html>
