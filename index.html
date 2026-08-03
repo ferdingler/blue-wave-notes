@@ -441,7 +441,28 @@
   }
   @media (max-width: 960px) {
     .layout { display: block; }
-    aside { position: static; height: auto; }
+    aside {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      height: auto;
+      padding: 12px 16px;
+    }
+    aside h2 { font-size: 14px; }
+    aside .subtitle { display: none; }
+    nav {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+    nav a {
+      flex: 0 0 auto;
+      margin: 0;
+      padding: 6px 8px;
+      white-space: nowrap;
+    }
     main { padding: 24px 16px 48px; }
     .two { grid-template-columns: 1fr; }
     .track { grid-template-columns: 1fr; }
@@ -485,8 +506,8 @@
   <section class="hero">
     <div class="eyebrow">Course</div>
     <h1>Sandboxing Primitives</h1>
-    <p><b>Network isolation, filesystem isolation, syscalls, process isolation, seccomp, shells, cgroups, credentials, gateways, and cross-platform OS controls.</b></p>
-    <p>This course is written for an experienced backend or distributed-systems engineer who wants a rigorous mental model of sandbox building blocks without assuming prior kernel-development experience.</p>
+    <p><b>Build a sandbox from its workload contract, not from container defaults.</b></p>
+    <p>This course teaches backend and distributed-systems engineers to map each allowed action to a kernel or broker enforcement point. The labs verify those boundaries with negative tests. No kernel-development experience is required.</p>
     <div class="tagrow">
       <span class="tag">Linux first principles</span>
       <span class="tag">macOS and Windows comparisons</span>
@@ -498,21 +519,22 @@
   <section>
     <h2>How To Use This Course</h2>
     <div class="grid">
-      <div class="card"><b>Follow the learning path.</b><br>Start with the curriculum map and contract matrix, then work module by module. Each module contains its lecture, videos, lab, and resources together.</div>
+      <div class="card"><b>Follow the learning path.</b><br>Start with the curriculum map and contract matrix, then work module by module. Modules pair explanations with focused labs, references, and selected videos.</div>
       <div class="card"><b>Do labs in place.</b><br>Some labs require Linux, root, Docker, or bubblewrap. They appear in the module where the primitive is introduced, so you can test the idea immediately.</div>
       <div class="card"><b>Look for limits.</b><br>Every module says what the primitive cannot enforce. Those limits are usually where real sandbox designs fail.</div>
       <div class="card"><b>Keep platform differences explicit.</b><br>Linux, macOS, and Windows have different primitive sets. Shared product goals do not imply identical enforcement mechanisms.</div>
     </div>
+    <div class="callout"><b>Lab validation:</b> On August 3, 2026, all 19 executable exercises passed on Amazon Linux 2023 (kernel 6.12, AArch64, cgroup v2). The remaining exercise is a manual gateway design review. See the <a href="sandboxing-primitives-course-validation.md">validation report</a> for summary results, corrected defects, and portability limits.</div>
 
     <div class="diagram">
       <div class="flow">
-        <div class="step"><b>Program</b><br>Runs in user space with memory, FDs, env, cwd, credentials.</div>
+        <div class="step"><b>Program</b><br>Runs with memory, file descriptors (FDs), environment variables, a working directory, and credentials.</div>
         <div class="arrow">&rarr;</div>
-        <div class="step"><b>Syscall / IPC / Gateway</b><br>Requests a kernel or broker-mediated action.</div>
+        <div class="step"><b>System call / Interprocess communication / Gateway</b><br>Requests a kernel- or broker-mediated action.</div>
         <div class="arrow">&rarr;</div>
         <div class="step"><b>Kernel / Trusted Broker</b><br>Checks credentials, namespaces, filters, limits, policy.</div>
         <div class="arrow">&rarr;</div>
-        <div class="step"><b>Resource</b><br>File, network, process, device, credential, API.</div>
+        <div class="step"><b>Resource</b><br>File, network, process, device, credential, or application programming interface.</div>
       </div>
     </div>
   </section>
@@ -604,7 +626,7 @@
   <article id="m0" class="module">
     <div class="module-header"><div class="num">0</div><div><h2>What Is An OS Boundary?</h2><p class="summary">The operating system is a privileged resource manager. A sandbox is a narrower contract for what the kernel or trusted brokers will do for a process.</p></div></div>
     <div class="two">
-      <div class="box"><h4>Learning Objectives</h4><ul><li>Explain user space vs kernel space.</li><li>Identify resources the OS mediates.</li><li>Separate isolation from high-level policy.</li><li>Understand what an escape means.</li></ul></div>
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Explain user space compared with kernel space.</li><li>Identify resources the OS mediates.</li><li>Separate isolation from high-level policy.</li><li>Understand what an escape means.</li></ul></div>
       <div class="box"><h4>Core Idea</h4><p>Applications do not touch disks, sockets, process tables, devices, or other processes directly. They ask the kernel. The sandbox reduces what the kernel or a trusted broker will do on behalf of the process.</p></div>
     </div>
     <div class="lesson">
@@ -719,7 +741,7 @@ DEMO_SECRET=from-environment bash -c '
       </div>
       <div class="video-card">
         <a class="thumb" href="https://www.youtube.com/watch?v=73nB9-HYbAI" target="_blank" rel="noopener"><img src="https://i.ytimg.com/vi/73nB9-HYbAI/hqdefault.jpg" alt="Michael Kerrisk user namespaces thumbnail"><span>Watch on YouTube</span></a>
-        <div class="body"><h3>Michael Kerrisk: User Namespaces</h3><p>Rootless containers, UID/GID mappings, and privilege inside vs outside.</p></div>
+        <div class="body"><h3>Michael Kerrisk: User Namespaces</h3><p>Rootless containers, UID/GID mappings, and privilege inside compared with outside.</p></div>
       </div>
     </div>
     <h3>macOS and Windows</h3>
@@ -734,7 +756,8 @@ ls -l /tmp/perm-demo
 chmod 600 /tmp/perm-demo
 ls -l /tmp/perm-demo
 grep Cap /proc/$$/status</code></pre><p>If available, try <code>sudo -u nobody cat /tmp/perm-demo</code> and observe the denial. The <code>Cap*</code> lines show the process capability sets.</p></div>
-    <div class="callout danger"><b>Gotcha:</b> <code>CAP_SYS_ADMIN</code> is famously broad. In many sandbox designs, retaining it is close to retaining root-shaped escape power.</div>
+    <p><b>Cleanup:</b> <code>rm -f /tmp/perm-demo</code>.</p>
+    <div class="callout danger"><b>Failure mode:</b> <code>CAP_SYS_ADMIN</code> permits mount, namespace, and other host-control operations. Remove it from sandboxed workloads.</div>
     <p class="resources"><a href="https://www.youtube.com/watch?v=cdo63IGyeKI">Linux capabilities explained</a><a href="https://www.youtube.com/watch?v=caRjErS9fiY">Avoiding --privileged</a><a href="https://man7.org/linux/man-pages/man7/capabilities.7.html">man7: capabilities</a></p>
   </article>
 
@@ -855,6 +878,7 @@ bwrap \
   --setenv HOME /work \
   --setenv PATH /usr/bin:/bin \
   /bin/sh</code></pre>
+      <p>If your distribution lacks <code>/lib64</code>, omit that bind. Bubblewrap also requires user-namespace support or elevated privileges, depending on host configuration.</p>
       <p><b>Try inside:</b> <code>pwd</code>, <code>touch ok</code>, <code>touch /usr/nope</code>, <code>ls /home</code>, <code>ls -l /proc/$$/fd</code>.</p>
       <div class="answer"><b>Expected observations:</b> <code>/work</code> is writable, <code>/usr</code> is not, the host home directory is absent, and host files are invisible unless explicitly mounted.</div>
       <p><b>Cleanup:</b> <code>rm -r -- /tmp/sandbox-work</code>.</p>
@@ -940,11 +964,11 @@ sudo unshare --pid --fork --mount-proc bash -c '
     <p>A proxy-only design has three parts. First, the sandbox has no direct route to the internet or sensitive internal networks. Second, the only reachable endpoint is the proxy or gateway. Third, the proxy authenticates the workload, evaluates policy, logs the decision, and forwards only allowed requests. Omitting the first step makes the proxy advisory, not enforcing.</p>
     <div class="diagram">
       <div class="flow">
-        <div class="step"><b>Bad</b><br>Process has normal route plus <code>HTTP_PROXY</code>. Cooperative clients use proxy; generated code can ignore it.</div>
+        <div class="step"><b>Advisory proxy</b><br>Process has normal route plus <code>HTTP_PROXY</code>. Cooperative clients use proxy; generated code can ignore it.</div>
         <div class="arrow">&rarr;</div>
-        <div class="step"><b>Better</b><br>Network namespace has no direct route. Only a broker socket or gateway veth path exists.</div>
+        <div class="step"><b>Enforced network path</b><br>Network namespace has no direct route. Only a broker socket or gateway veth path exists.</div>
         <div class="arrow">&rarr;</div>
-        <div class="step"><b>Best</b><br>Gateway enforces method/path/identity policy and holds credentials outside the sandbox.</div>
+        <div class="step"><b>Enforced semantic policy</b><br>Gateway enforces method, path, and identity policy while holding credentials outside the sandbox.</div>
       </div>
     </div>
     <h3>Network Verification Checklist</h3>
@@ -979,7 +1003,8 @@ ip route
 ping -c 1 127.0.0.1
 ip link set lo up
 ping -c 1 127.0.0.1
-curl -m 2 https://example.com || true</code></pre>
+curl -m 2 https://example.com || true
+exit</code></pre>
       <div class="answer"><b>Expected observations:</b> The namespace starts with no external interfaces and no default route. Loopback can work after <code>lo</code> is brought up, but internet egress still fails.</div>
     </div>
     <div class="labwork">
@@ -1012,7 +1037,7 @@ sudo ip netns exec labnet curl -m 3 https://example.com || true</code></pre>
   <article id="m7" class="module">
     <div class="module-header"><div class="num">7</div><div><h2>Seccomp</h2><p class="summary">Seccomp restricts which syscalls a process may make. It reduces kernel attack surface; it does not understand business intent.</p></div></div>
     <div class="two">
-      <div class="box"><h4>Learning Objectives</h4><ul><li>Understand seccomp strict vs BPF filter mode.</li><li>Know allowlist vs denylist tradeoffs.</li><li>Understand <code>KILL</code>, <code>ERRNO</code>, <code>TRAP</code>, <code>TRACE</code>, <code>LOG</code>, and <code>USER_NOTIF</code> style outcomes.</li></ul></div>
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Compare seccomp strict mode with BPF filter mode.</li><li>Compare allowlist and denylist tradeoffs.</li><li>Understand <code>KILL</code>, <code>ERRNO</code>, <code>TRAP</code>, <code>TRACE</code>, <code>LOG</code>, and <code>USER_NOTIF</code> style outcomes.</li></ul></div>
       <div class="box"><h4>Core Idea</h4><p>Even after filesystem and network isolation, a compromised process can exercise a large kernel API. Seccomp blocks syscalls the workload should never need.</p></div>
     </div>
     <h3>Linux Mechanics</h3>
@@ -1040,10 +1065,12 @@ sudo ip netns exec labnet curl -m 3 https://example.com || true</code></pre>
       <tr><td>BPF / perf</td><td>Powerful kernel introspection and historical attack surface.</td><td>Deny unless observability workload explicitly needs it.</td></tr>
       <tr><td>Kernel modules / reboot</td><td>Host control operations.</td><td>Deny.</td></tr>
       <tr><td>Raw sockets / packet sockets</td><td>Can bypass application protocols or inspect traffic.</td><td>Deny for ordinary agent workloads.</td></tr>
+      <tr><td><code>io_uring</code></td><td>Can submit operations such as socket creation without invoking the corresponding syscall after setup.</td><td>Deny <code>io_uring_setup</code> unless the workload requires and constrains it.</td></tr>
       <tr><td><code>ioctl</code></td><td>Large device-specific control surface.</td><td>Minimize devices; deny or constrain where possible.</td></tr>
     </table>
     <h3>USER_NOTIF Broker Caution</h3>
-    <p><code>SECCOMP_RET_USER_NOTIF</code> lets a supervisor receive selected syscall requests and decide whether to emulate or allow them. This can implement powerful brokers, but it is not free. The supervisor must avoid time-of-check/time-of-use bugs, must not trust mutable user memory after inspection, and must not become a confused deputy that performs privileged operations for a malicious caller. Use it when syscall-level mediation is truly the right abstraction; use namespaces, mounts, and ordinary brokers when those express the policy more cleanly.</p>
+    <p><code>SECCOMP_RET_USER_NOTIF</code> lets a supervisor receive selected syscall requests and decide whether to emulate or allow them. This creates a syscall broker with its own security requirements.</p>
+    <p>The supervisor must prevent time-of-check/time-of-use races. It must not trust mutable user memory after inspection. It must also reject requests that would make it a confused deputy. Use namespaces, mounts, and ordinary brokers when they express the policy more directly.</p>
     <div class="checkpoint"><b>Review question:</b> If the policy is "may write only to the workspace," is seccomp the best primary tool? Usually no. Use filesystem isolation for the path universe, then seccomp to reduce unrelated kernel attack surface.</div>
     <h3>Watch</h3>
     <div class="video-grid">
@@ -1064,7 +1091,7 @@ sudo ip netns exec labnet curl -m 3 https://example.com || true</code></pre>
       <p><b>Goal:</b> See a syscall fail because the runtime installed a seccomp filter.</p>
       <pre><code>mkdir -p /tmp/sandbox-labs/seccomp
 
-cat &gt; /tmp/sandbox-labs/seccomp/deny-uname.json &lt;&lt;'JSON'
+cat &gt; /tmp/sandbox-labs/seccomp/deny-mkdir.json &lt;&lt;'JSON'
 {
   "defaultAction": "SCMP_ACT_ALLOW",
   "architectures": [
@@ -1073,19 +1100,22 @@ cat &gt; /tmp/sandbox-labs/seccomp/deny-uname.json &lt;&lt;'JSON'
   ],
   "syscalls": [
     {
-      "names": ["uname"],
-      "action": "SCMP_ACT_ERRNO"
+      "names": ["mkdir", "mkdirat"],
+      "action": "SCMP_ACT_ERRNO",
+      "errnoRet": 1
     }
   ]
 }
 JSON
 
-docker run --rm alpine sh -c 'uname -a; grep Seccomp /proc/self/status'
+docker run --rm alpine sh -c \
+  'mkdir /tmp/allowed &amp;&amp; echo "mkdir allowed"; grep Seccomp /proc/self/status'
 
 docker run --rm \
-  --security-opt seccomp=/tmp/sandbox-labs/seccomp/deny-uname.json \
-  alpine sh -c 'uname -a || true; grep Seccomp /proc/self/status'</code></pre>
-      <div class="answer"><b>Expected observations:</b> The first container can run <code>uname</code>. The second receives an error for <code>uname</code>, while <code>/proc/self/status</code> reports seccomp filtering.</div>
+  --security-opt seccomp=/tmp/sandbox-labs/seccomp/deny-mkdir.json \
+  alpine sh -c \
+  'if mkdir /tmp/blocked; then echo "unexpected allow"; exit 1; else echo "mkdir blocked"; fi; grep Seccomp /proc/self/status'</code></pre>
+      <div class="answer"><b>Expected observations:</b> The first container creates the directory. The second reports <code>Operation not permitted</code> and prints <code>mkdir blocked</code>. Both report seccomp mode 2 because Docker installs its default profile unless you replace it.</div>
       <p><b>Cleanup:</b> <code>rm -r -- /tmp/sandbox-labs/seccomp</code>.</p>
     </div>
     <div class="callout warn"><b>Gotcha:</b> Denylists age poorly as new syscalls appear. For strong workloads, prefer allowlists shaped from observed behavior and tested under realistic startup paths.</div>
@@ -1095,7 +1125,7 @@ docker run --rm \
   <article id="m8" class="module">
     <div class="module-header"><div class="num">8</div><div><h2>Cgroups and Resource Isolation</h2><p class="summary">A process can be safely denied sensitive resources and still harm the host by consuming all CPU, memory, PIDs, disk, or IO.</p></div></div>
     <div class="two">
-      <div class="box"><h4>Learning Objectives</h4><ul><li>Understand CPU, memory, PID, IO, and device controls.</li><li>Know cgroup v1 vs v2 exists.</li><li>Compare Linux cgroups to Windows Job Objects.</li></ul></div>
+      <div class="box"><h4>Learning Objectives</h4><ul><li>Understand CPU, memory, PID, IO, and device controls.</li><li>Distinguish cgroup v1 from cgroup v2.</li><li>Compare Linux cgroups to Windows Job Objects.</li></ul></div>
       <div class="box"><h4>Core Idea</h4><p>Resource isolation makes abuse survivable. It is the practical defense against fork bombs, memory bombs, and noisy-neighbor failures.</p></div>
     </div>
     <h3>Linux Mechanics</h3>
@@ -1118,7 +1148,7 @@ docker run --rm \
       <tr><td><code>memory.events</code></td><td>Memory pressure and OOM counters.</td><td>Debug workload kills and capacity tuning.</td></tr>
       <tr><td>PSI files</td><td>Pressure stall information for CPU, memory, and IO.</td><td>Detect saturation before user-visible failures.</td></tr>
     </table>
-    <h3>rlimits vs cgroups</h3>
+    <h3>rlimits Compared With cgroups</h3>
     <p><code>rlimit</code> values are per-process or per-user limits inherited at process creation. They are useful for simple ceilings such as file size, open files, or address-space hints. Cgroups apply to a set of processes and descendants, which makes them better for supervising an entire sandbox tree. A robust launcher often uses both: rlimits for process-local guardrails and cgroups for aggregate resource governance.</p>
     <h3>Production Gotchas</h3>
     <ul>
@@ -1159,7 +1189,7 @@ docker run --rm \
 cat /proc/self/limits
 python3 -c 'x=[]; [x.append(bytearray(1024*1024)) for _ in range(512)]' || true
 exit</code></pre>
-      <div class="answer"><b>Expected observations:</b> The shell is placed in a systemd-managed cgroup. The Python allocation should fail or be killed near the memory limit instead of consuming arbitrary host memory.</div>
+      <div class="answer"><b>Expected observations:</b> <code>systemd-run</code> places the shell in a managed cgroup. The Python allocation fails or ends when the process reaches the memory limit.</div>
     </div>
     <div class="callout warn"><b>Gotcha:</b> Memory limits often end in an OOM kill, not a clean exception. Application runtimes may need their own heap settings aligned with the cgroup limit.</div>
     <p class="resources"><a href="https://www.youtube.com/watch?v=Clr_MQwaJtA">Michael Kerrisk: cgroups v2</a><a href="https://www.youtube.com/watch?v=PzpG40WiEfM">Tejun Heo: cgroups</a><a href="https://docs.kernel.org/admin-guide/cgroup-v2.html">Kernel docs: cgroup v2</a></p>
@@ -1196,7 +1226,21 @@ exit</code></pre>
       <div class="box"><h4>Can Enforce</h4><ul><li>Namespace and cgroup separation.</li><li>Kernel attack surface reduction.</li><li>Stronger kernel separation with VM/microVM.</li></ul></div>
       <div class="box"><h4>Cannot Enforce</h4><ul><li>Protection from shared-kernel bugs in plain containers.</li><li>Safety from privileged containers.</li><li>Secret isolation if secrets are mounted or inherited.</li></ul></div>
     </div>
-    <div class="lab"><h4>Optional Lab</h4><pre><code>docker run --rm -it --network=none --pids-limit=64 --memory=128m --cap-drop=ALL alpine sh</code></pre><p>Inside, inspect <code>/proc</code>, try networking, and compare visibility with the host.</p></div>
+    <div class="labwork">
+      <h3>Lab: Inspect Container Controls</h3>
+      <div class="lab-meta"><span class="pill">Docker on Linux</span><span class="pill">20 minutes</span></div>
+      <pre><code>docker run --rm \
+  --network=none \
+  --pids-limit=64 \
+  --memory=128m \
+  --cap-drop=ALL \
+  alpine sh -c '
+    grep -E "^(CapEff|Seccomp)" /proc/1/status
+    cat /proc/1/cgroup
+    wget -T 2 -qO- https://example.com || echo "network blocked"
+  '</code></pre>
+      <div class="answer"><b>Expected observations:</b> <code>CapEff</code> is zero, seccomp mode is 2, the process belongs to a container cgroup, and the network request fails.</div>
+    </div>
     <div class="callout danger"><b>Gotcha:</b> Mounting <code>/var/run/docker.sock</code> into a container usually grants near-host-root control.</div>
     <p class="resources"><a href="https://www.youtube.com/watch?v=8fi7uSYlOdc">Liz Rice: containers from scratch</a><a href="https://www.youtube.com/watch?v=BIRv2FnHJAg">AWS Firecracker</a><a href="https://gvisor.dev/docs/architecture_guide/">gVisor architecture</a></p>
   </article>
@@ -1259,7 +1303,24 @@ python3 /tmp/sandbox-labs/argv/demo.py '$(id)'</code></pre>
       <div class="box"><h4>Can Enforce</h4><ul><li>Domain-specific constraints with deliberately limited languages.</li><li>Safer plugins through process isolation.</li><li>Policy when runtime hooks are complete.</li></ul></div>
       <div class="box"><h4>Cannot Enforce</h4><ul><li>Security if filesystem/network/native APIs remain exposed.</li><li>Resource safety without CPU/memory/time limits.</li><li>Safety from injection into generated source.</li></ul></div>
     </div>
-    <div class="lab"><h4>Optional Lab</h4><p>Render user input through a template engine and test engine-specific syntax such as <code>{{ 7 * 7 }}</code>. Confirm whether the engine treats it as text or executable template logic.</p></div>
+    <div class="labwork">
+      <h3>Lab: Data Parsing Versus Code Execution</h3>
+      <div class="lab-meta"><span class="pill">Python 3</span><span class="pill">15 minutes</span></div>
+      <p><b>Goal:</b> Observe the boundary between parsing input as data and compiling it as code.</p>
+      <pre><code>python3 - &lt;&lt;'PY'
+import ast
+import json
+
+data = '{"action": "read", "path": "/work"}'
+print("JSON data:", json.loads(data))
+
+source = "40 + 2"
+tree = ast.parse(source, mode="eval")
+print("Python syntax tree:", ast.dump(tree))
+print("Executed result:", eval(compile(tree, "&lt;lab&gt;", "eval")))
+PY</code></pre>
+      <div class="answer"><b>Expected observations:</b> <code>json.loads</code> produces data. <code>ast.parse</code>, <code>compile</code>, and <code>eval</code> treat input as executable Python. The lab uses a fixed expression; never pass untrusted input to <code>eval</code>.</div>
+    </div>
     <div class="callout danger"><b>Gotcha:</b> "Safe eval" is rarely safe unless the language was designed for confinement and the runtime API surface is deliberately small.</div>
     <p class="resources"><a href="https://portswigger.net/web-security/server-side-template-injection">PortSwigger: template injection</a><a href="https://owasp.org/www-project-cheat-sheets/">OWASP cheat sheets</a><a href="https://cwe.mitre.org/data/definitions/94.html">CWE-94: code injection</a></p>
   </article>
@@ -1294,7 +1355,8 @@ python3 /tmp/sandbox-labs/argv/demo.py '$(id)'</code></pre>
     <div class="labwork"><h3>Lab: Inspect Descriptor Authority</h3><div class="lab-meta"><span class="pill">No root</span><span class="pill">Linux /proc</span><span class="pill">15 minutes</span></div><pre><code>ls -l /proc/$$/fd
 exec 3&lt;/etc/passwd
 ls -l /proc/$$/fd
-bash -c 'cat &lt;&amp;3 | head -n 1'</code></pre><p>Notice the new descriptor. If passed to a child, it carries read authority even if the child did not open the path itself.</p></div>
+bash -c 'cat &lt;&amp;3 | head -n 1'
+exec 3&lt;&amp;-</code></pre><p>Notice the new descriptor. If passed to a child, it carries read authority even if the child did not open the path itself.</p></div>
     <div class="callout danger"><b>Gotcha:</b> A host directory FD plus <code>openat()</code> can bypass naive path assumptions.</div>
     <p class="resources"><a href="https://www.youtube.com/watch?v=Ftg8fjY_YWU">FDs and Unix sockets</a><a href="https://man7.org/linux/man-pages/man7/unix.7.html">man7: unix sockets</a><a href="https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html">man7: proc_pid_fd</a></p>
   </article>
@@ -1312,9 +1374,7 @@ bash -c 'cat &lt;&amp;3 | head -n 1'</code></pre><p>Notice the new descriptor. I
       <p>A bearer credential grants access to whoever copies it. API keys, session tokens, SSH private keys, cookies, and many cloud credentials are bearer-like in practice. Once untrusted generated code sees them, it can often use them outside the intended workflow until they expire or are revoked.</p>
       <p>Brokered authority keeps the raw secret outside the sandbox. The workload asks for an operation. A trusted component validates the request, signs or performs the request if allowed, logs the decision, and returns only the result. This preserves policy leverage because the sandbox never receives a reusable credential.</p>
     </div>
-    <h3>Bearer vs Brokered Authority</h3>
-    <p>A bearer credential grants access to whoever copies it. API keys, session tokens, SSH private keys, cookies, and many cloud credentials are bearer-like in practice. Once untrusted code sees them, it can often use them outside the intended workflow until they expire or are revoked.</p>
-    <p>Brokered authority keeps the raw secret outside the sandbox. The workload asks for an operation. A trusted component validates the request, signs or performs the request if allowed, logs the decision, and returns only the result. This preserves policy leverage because the sandbox never receives a reusable credential.</p>
+    <h3>Bearer Credentials and Brokered Authority</h3>
     <table>
       <tr><th>Exposure Path</th><th>Why It Is Dangerous</th><th>Sandbox Pattern</th></tr>
       <tr><td>Environment variables</td><td>Inherited by default, visible through <code>/proc</code> on some systems, often logged.</td><td>Start with <code>env -i</code> or explicit allowlist.</td></tr>
@@ -1332,8 +1392,8 @@ bash -c 'cat &lt;&amp;3 | head -n 1'</code></pre><p>Notice the new descriptor. I
       <div class="box"><h4>Can Enforce</h4><ul><li>Scoped, short-lived credential use.</li><li>Secret retrieval outside untrusted code.</li><li>Audit through identity-aware helpers.</li></ul></div>
       <div class="box"><h4>Cannot Enforce</h4><ul><li>Protection after a raw secret is handed to malicious code.</li><li>Safety from logs and crash dumps unless controlled.</li><li>Least privilege if all workloads share a credential.</li></ul></div>
     </div>
-    <div class="labwork"><h3>Lab: Secret Exposure Inventory</h3><div class="lab-meta"><span class="pill">No root</span><span class="pill">20 minutes</span></div><pre><code>env | sort
-tr '\0' '\n' &lt; /proc/$$/environ
+    <div class="labwork"><h3>Lab: Secret Exposure Inventory</h3><div class="lab-meta"><span class="pill">No root</span><span class="pill">20 minutes</span></div><pre><code>env | cut -d= -f1 | sort
+tr '\0' '\n' &lt; /proc/$$/environ | cut -d= -f1 | sort
 find "$HOME" -maxdepth 2 \( -name '.aws' -o -name '.ssh' -o -name '.docker' -o -name '.npmrc' -o -name '.pypirc' \) -print</code></pre><p>Identify variables, config paths, and local helper state you would not want inherited or mounted into an untrusted child process.</p></div>
     <div class="callout danger"><b>Gotcha:</b> Environment variables are convenient, inherited by default, easy to dump, and frequently logged.</div>
     <p class="resources"><a href="https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html">OWASP: secrets management</a><a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html">AWS: temporary credentials</a><a href="https://man7.org/linux/man-pages/man7/credentials.7.html">man7: credentials</a></p>
@@ -1421,6 +1481,7 @@ find "$HOME" -maxdepth 2 \( -name '.aws' -o -name '.ssh' -o -name '.docker' -o -
       <h3>Lab: Broker-Only Network Gateway</h3>
       <div class="lab-meta"><span class="pill">bubblewrap</span><span class="pill">Python 3</span><span class="pill">curl with Unix sockets</span><span class="pill">45 minutes</span></div>
       <p><b>Goal:</b> Build a sandbox with no direct network egress that can still make an allowlisted request through a host broker over a Unix socket.</p>
+      <div class="callout warn"><b>Lab scope:</b> This broker demonstrates routing and allowlisting only. It omits caller authentication, robust HTTP parsing, request-size limits, concurrency controls, and production error handling.</div>
       <p>Start a tiny host-side broker in one terminal:</p>
       <pre><code>mkdir -p /tmp/sandbox-labs/broker /tmp/sandbox-labs/broker-work
 
@@ -1479,7 +1540,7 @@ exit</code></pre>
       <p><b>Cleanup:</b> Stop the broker with <code>Ctrl-C</code>, then run <code>rm -r -- /tmp/sandbox-labs/broker /tmp/sandbox-labs/broker-work</code>.</p>
     </div>
     <div class="callout danger"><b>Gotcha:</b> A proxy is not a boundary if direct sockets, SSH, DNS tunneling, metadata endpoints, or privileged Unix sockets remain reachable.</div>
-    <p class="resources"><a href="https://www.youtube.com/watch?v=LDv7ohdZV1U">Chromium Linux sandbox APIs</a><a href="https://chromium.googlesource.com/chromium/src/+/main/docs/linux/sandboxing.md">Chromium: Linux sandboxing</a><a href="https://man7.org/linux/man-pages/man2/seccomp_unotify.2.html">man7: seccomp_unotify</a></p>
+    <p class="resources"><a href="https://www.youtube.com/watch?v=LDv7ohdZV1U">Chromium Linux sandbox APIs</a><a href="https://chromium.googlesource.com/chromium/src/+/HEAD/sandbox/linux/README.md">Chromium: Linux sandboxing</a><a href="https://man7.org/linux/man-pages/man2/seccomp_unotify.2.html">man7: seccomp_unotify</a></p>
   </article>
 
   <article id="m15" class="module">
@@ -1529,7 +1590,8 @@ ausearch -m SECCOMP,AVC,USER_AVC</code></pre>
     </table>
     <div class="lab"><h4>Optional Lab</h4><pre><code>sudo unshare --net --fork bash
 ip addr
-ping -c 1 8.8.8.8</code></pre><p>From another terminal, find the PID and inspect <code>/proc/&lt;pid&gt;/ns</code> and <code>nsenter -t &lt;pid&gt; -n ip addr</code>.</p></div>
+ping -c 1 8.8.8.8
+exit</code></pre><p>From another terminal, find the PID and inspect <code>/proc/&lt;pid&gt;/ns</code> and <code>nsenter -t &lt;pid&gt; -n ip addr</code>.</p></div>
     <div class="callout warn"><b>Gotcha:</b> Debug access can weaken isolation. Granting <code>SYS_PTRACE</code> or broad <code>/proc</code> access is itself a security decision.</div>
     <p class="resources"><a href="https://www.youtube.com/watch?v=4pEHfGKB-OE">Julia Evans: strace</a><a href="https://www.brendangregg.com/">Brendan Gregg: Linux performance/eBPF</a><a href="https://man7.org/linux/man-pages/man1/nsenter.1.html">man7: nsenter</a></p>
   </article>
@@ -1553,15 +1615,18 @@ ping -c 1 8.8.8.8</code></pre><p>From another terminal, find the PID and inspect
       <tr><td>Resource exhaustion</td><td>Fork bomb or memory spike.</td><td>cgroups, rlimits, PID limits.</td></tr>
     </table>
     <h3>Platform Examples</h3>
-    <p>Linux failures often involve namespace sharing, broad mounts, retained capabilities, missing seccomp, weak cgroups, leaked FDs, and host sockets. macOS failures often involve over-broad entitlements, TCC grants, helper tools outside the sandbox, and XPC confusion. Windows failures often involve token/ACL mistakes, named pipe or COM exposure, Job Object escape, AppContainer capability mistakes, and writable directories in privileged search paths.</p>
+    <p><b>Linux:</b> Check namespace sharing, broad mounts, retained capabilities, missing seccomp, weak cgroups, leaked FDs, and host sockets.</p>
+    <p><b>macOS:</b> Check broad entitlements, Transparency, Consent, and Control grants, helper tools outside the sandbox, and XPC authorization.</p>
+    <p><b>Windows:</b> Check token and access-control-list mistakes, named pipes, COM brokers, Job Object membership, AppContainer capabilities, and privileged search paths.</p>
     <div class="two">
       <div class="box"><h4>Analysis Can Improve</h4><ul><li>Trust-boundary clarity.</li><li>Least privilege.</li><li>Fail-closed startup.</li><li>Escape-relevant tests and monitoring.</li></ul></div>
       <div class="box"><h4>Cannot Guarantee</h4><ul><li>Kernel vulnerability resistance.</li><li>Correctness of all dependencies.</li><li>Safety if privileged host interfaces are intentionally exposed.</li><li>Protection from all side channels.</li></ul></div>
     </div>
     <div class="lab"><h4>Optional Lab</h4><pre><code>exec 3&lt;/etc/passwd
-bash -c 'ls -l /proc/$$/fd'</code></pre><p>Observe inherited descriptors. The child has access even if later path restrictions would hide <code>/etc/passwd</code>.</p></div>
+bash -c 'ls -l /proc/$$/fd'
+exec 3&lt;&amp;-</code></pre><p>Observe inherited descriptors. The child has access even if later path restrictions would hide <code>/etc/passwd</code>.</p></div>
     <div class="callout danger"><b>Gotcha:</b> Debug flags, <code>--privileged</code>, host PID/network namespaces, broad writable mounts, and unconfined seccomp profiles can collapse a sandbox while still making it look "containerized".</div>
-    <p class="resources"><a href="https://www.youtube.com/watch?v=caRjErS9fiY">Avoiding --privileged</a><a href="https://docs.docker.com/engine/security/">Docker security docs</a><a href="https://chromium.googlesource.com/chromium/src/+/main/docs/linux/sandboxing.md">Chromium sandboxing docs</a></p>
+    <p class="resources"><a href="https://www.youtube.com/watch?v=caRjErS9fiY">Avoiding --privileged</a><a href="https://docs.docker.com/engine/security/">Docker security docs</a><a href="https://chromium.googlesource.com/chromium/src/+/HEAD/sandbox/linux/README.md">Chromium sandboxing docs</a></p>
   </article>
 
   <article id="m17" class="module">
@@ -1592,7 +1657,6 @@ mkdir -p /tmp/sandbox-work
 
 bwrap \
   --unshare-all \
-  --share-net \
   --die-with-parent \
   --new-session \
   --ro-bind /usr /usr \
@@ -1600,7 +1664,6 @@ bwrap \
   --ro-bind /lib /lib \
   --ro-bind /lib64 /lib64 \
   --ro-bind /etc/ld.so.cache /etc/ld.so.cache \
-  --ro-bind /etc/resolv.conf /etc/resolv.conf \
   --proc /proc \
   --dev /dev \
   --tmpfs /tmp \
@@ -1609,20 +1672,20 @@ bwrap \
   --setenv HOME /work \
   --setenv PATH /usr/bin:/bin \
   /bin/sh</code></pre>
-    <p>Inside the sandbox, try <code>pwd</code>, <code>touch allowed.txt</code>, <code>ls /</code>, <code>ls /home</code>, <code>ps aux</code>, and <code>ls -l /proc/$$/fd</code>. To remove network access, do not share the network namespace; exact behavior depends on host configuration and privileges.</p>
+    <p>Inside the sandbox, try <code>pwd</code>, <code>touch allowed.txt</code>, <code>ls /</code>, <code>ls /home</code>, <code>ps aux</code>, and <code>ls -l /proc/$$/fd</code>. This command creates a private network namespace with no egress. Exact behavior depends on host configuration and privileges.</p>
     <div class="labwork">
       <h3>Lab: Capstone Composed Sandbox</h3>
       <div class="lab-meta"><span class="pill">bubblewrap</span><span class="pill">systemd user cgroups</span><span class="pill">Gateway lab optional</span><span class="pill">60 minutes</span></div>
       <p><b>Goal:</b> Compose the primitives: sanitized environment, restricted filesystem, private PID namespace, no direct network, cgroup limits, and an optional broker-only gateway.</p>
       <pre><code>mkdir -p /tmp/sandbox-labs/capstone-work
 
-env -i \
-  HOME=/work \
-  PATH=/usr/bin:/bin \
-  systemd-run --user --scope \
+systemd-run --user --scope \
     -p MemoryMax=256M \
     -p CPUQuota=50% \
     -p TasksMax=64 \
+  env -i \
+    HOME=/work \
+    PATH=/usr/bin:/bin \
   bwrap \
     --unshare-all \
     --die-with-parent \
@@ -1676,7 +1739,7 @@ exit</code></pre>
   </article>
 
   <section id="capstone" class="module">
-    <div class="module-header"><div class="num">P</div><div><h2>Capstone: Design A Gateway-Only Agent Sandbox</h2><p class="summary">A professional artifact you can use to review a real sandbox design: contract, authority inventory, implementation plan, tests, and readiness rubric.</p></div></div>
+    <div class="module-header"><div class="num">P</div><div><h2>Capstone: Design A Gateway-Only Agent Sandbox</h2><p class="summary">Produce a reviewable sandbox design with a contract, authority inventory, implementation plan, tests, and readiness rubric.</p></div></div>
 
     <p>The capstone scenario is a coding-agent workload. It receives a workspace, runs tools, executes generated code, and may call approved services through a gateway. It must not read the host home directory, inherit host credentials, contact the internet directly, inspect host processes, exhaust host resources, or mutate host control surfaces.</p>
 
@@ -1728,7 +1791,7 @@ exit</code></pre>
       <p>Once the workload runs, observe its syscall surface and apply a seccomp profile. Use <code>ERRNO</code> or logging during development, then tighten. Use AppArmor, SELinux, or Landlock where available to reinforce filesystem and process restrictions. Do not use seccomp as a substitute for mount/network isolation.</p>
       <ol>
         <li>Trace normal startup and representative tasks.</li>
-        <li>Deny mount, namespace creation, raw sockets, keyring, module loading, BPF/perf, ptrace, and dangerous device operations unless explicitly required.</li>
+        <li>Deny mount, namespace creation, raw sockets, keyring, module loading, BPF/perf, ptrace, <code>io_uring_setup</code>, and dangerous device operations unless explicitly required.</li>
         <li>Run negative tests for each denied family.</li>
         <li>Document platform-specific gaps and whether the sandbox fails closed.</li>
       </ol>
@@ -1803,7 +1866,7 @@ exit</code></pre>
       <li><a href="https://docs.kernel.org/security/lsm.html">Kernel docs: Linux Security Modules</a></li>
       <li><a href="https://docs.kernel.org/userspace-api/landlock.html">Kernel docs: Landlock</a></li>
       <li><a href="https://man7.org/linux/man-pages/man7/landlock.7.html">man7: landlock(7)</a></li>
-      <li><a href="https://chromium.googlesource.com/chromium/src/+/main/docs/linux/sandboxing.md">Chromium: Linux sandboxing</a></li>
+      <li><a href="https://chromium.googlesource.com/chromium/src/+/HEAD/sandbox/linux/README.md">Chromium: Linux sandboxing</a></li>
       <li><a href="https://github.com/opencontainers/runtime-spec">OCI Runtime Spec</a></li>
       <li><a href="https://firecracker-microvm.github.io/">Firecracker microVM docs</a></li>
       <li><a href="https://gvisor.dev/docs/architecture_guide/">gVisor architecture guide</a></li>
@@ -1840,7 +1903,7 @@ exit</code></pre>
   </section>
 
   <div class="footer">
-    A single-file local HTML course on OS sandboxing primitives. Open directly in a browser; no server required.
+    <b>Next step:</b> Apply the authority inventory and capstone to a sandbox you own. Declare it ready only when every contract statement maps to an enforcement point and a regression test. This course opens directly in a browser; no server is required.
   </div>
 </main>
 </div>
